@@ -28,28 +28,28 @@ class PreprocessingConfig(BaseModel):
     """Configuration for preprocessing operations."""
     handle_missing: bool = True
     missing_method: str = Field(default='interpolation', 
-                               regex=r'^(interpolation|forward_fill|backward_fill|mean|median|drop)$')
+                               pattern=r'^(interpolation|forward_fill|backward_fill|mean|median|drop)$')
     
     detect_outliers: bool = True
     outlier_method: str = Field(default='iqr', 
-                               regex=r'^(iqr|zscore|isolation_forest|modified_zscore)$')
+                               pattern=r'^(iqr|zscore|isolation_forest|modified_zscore)$')
     outlier_threshold: float = Field(default=1.5, gt=0)
     outlier_action: str = Field(default='clip', 
-                               regex=r'^(clip|remove|transform|flag)$')
+                               pattern=r'^(clip|remove|transform|flag)$')
     
     scale_data: bool = True
     scaling_method: str = Field(default='standard', 
-                               regex=r'^(standard|minmax|robust|none)$')
+                               pattern=r'^(standard|minmax|robust|none)$')
     
     smooth_data: bool = False
     smoothing_method: str = Field(default='savgol', 
-                                 regex=r'^(savgol|rolling|exponential)$')
+                                 pattern=r'^(savgol|rolling|exponential)$')
     smoothing_window: int = Field(default=7, gt=0)
     
     resample_data: bool = False
     target_frequency: Optional[str] = None
     aggregation_method: str = Field(default='mean', 
-                                   regex=r'^(mean|sum|median|min|max|first|last)$')
+                                   pattern=r'^(mean|sum|median|min|max|first|last)$')
     
     feature_engineering: bool = True
     lag_features: List[int] = Field(default=[1, 7, 30])

@@ -6,7 +6,8 @@ Supports async operations, local LLM integration, and sophisticated workflow man
 import asyncio
 import logging
 from typing import Dict, List, Any, Optional, Union
-from pydantic import BaseSettings, Field, validator
+from pydantic import Field, validator
+from pydantic_settings import BaseSettings
 from datetime import datetime, timedelta
 import os
 
@@ -81,6 +82,8 @@ class CrewAIConfig(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        env_prefix = "CREWAI_"
+        extra = "ignore"
 
 
 class WorkflowConfig(BaseSettings):
@@ -110,6 +113,7 @@ class WorkflowConfig(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 class AgentPoolConfig(BaseSettings):
@@ -134,6 +138,7 @@ class AgentPoolConfig(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 class OrchestrationMetrics:

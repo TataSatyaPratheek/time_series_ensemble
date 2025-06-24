@@ -14,7 +14,8 @@ from sklearn.base import BaseEstimator
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import warnings
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 from src.config import settings
 from src.utils.exceptions import ModelError
 from src.utils.logging import get_logger

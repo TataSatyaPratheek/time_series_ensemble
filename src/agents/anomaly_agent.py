@@ -19,7 +19,7 @@ from local_llm_function_calling import Generator
 
 # Project imports
 from src.config import settings
-from src.data.preprocessor import AsyncTimeSeriesPreprocessor
+from src.data_.preprocessor import AsyncTimeSeriesPreprocessor
 from src.utils.exceptions import AgentError
 from src.utils.logging import get_logger
 

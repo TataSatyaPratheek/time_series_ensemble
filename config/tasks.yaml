@@ -1,0 +1,123 @@
+# Task Configuration for Time Series Ensemble Processing
+tasks:
+  data_preprocessing:
+    description: "Preprocess and validate time series data for analysis"
+    expected_output: "Clean, validated time series data with metadata"
+    agent: "trend_analyst"  # Lead preprocessor
+    tools:
+      - load_time_series
+      - validate_data_quality
+      - handle_missing_values
+      - detect_data_frequency
+    async_execution: true
+    timeout: 60
+    
+  trend_analysis:
+    description: |
+      Analyze long-term trends in the time series data. Identify trend direction, 
+      strength, and any significant change points. Provide statistical validation 
+      of trend components and extrapolation capabilities.
+    expected_output: |
+      Detailed trend analysis report including:
+      - Trend direction and magnitude
+      - Change point locations and significance
+      - Trend strength metrics
+      - Extrapolation forecasts with confidence intervals
+    agent: "trend_analyst"
+    tools:
+      - analyze_trend
+      - detect_change_points
+      - extrapolate_trend
+      - validate_trend_strength
+    dependencies: ["data_preprocessing"]
+    async_execution: true
+    timeout: 120
+
+  seasonality_detection:
+    description: |
+      Detect and analyze seasonal patterns in the time series. Identify multiple 
+      seasonalities, holiday effects, and cyclical behaviors. Validate seasonal 
+      stability and provide seasonal forecasting components.
+    expected_output: |
+      Comprehensive seasonality report including:
+      - Identified seasonal periods and strengths
+      - Holiday and special event effects
+      - Seasonal component forecasts
+      - Stability analysis across time periods
+    agent: "seasonality_detector"
+    tools:
+      - detect_seasonality
+      - analyze_multiple_seasons
+      - model_holiday_effects
+      - validate_seasonal_stability
+    dependencies: ["data_preprocessing"]
+    async_execution: true
+    timeout: 120
+
+  anomaly_detection:
+    description: |
+      Identify anomalies, outliers, and unusual patterns in the time series data.
+      Classify different types of anomalies and assess their impact on forecasting.
+      Provide recommendations for anomaly treatment.
+    expected_output: |
+      Anomaly analysis report including:
+      - Identified anomalies with timestamps and magnitudes
+      - Anomaly classification (outliers, level shifts, seasonal breaks)
+      - Impact assessment on forecasting performance
+      - Treatment recommendations
+    agent: "anomaly_hunter"
+    tools:
+      - detect_statistical_outliers
+      - identify_contextual_anomalies
+      - analyze_anomaly_patterns
+      - validate_anomaly_significance
+    dependencies: ["data_preprocessing"]
+    async_execution: true
+    timeout: 120
+
+  ensemble_forecasting:
+    description: |
+      Combine insights from trend, seasonality, and anomaly analysis to generate
+      ensemble forecasts. Apply optimal model combination strategies and provide
+      uncertainty estimates. Generate comprehensive forecasting reports.
+    expected_output: |
+      Complete ensemble forecast package including:
+      - Point forecasts with multiple horizons
+      - Prediction intervals and uncertainty estimates
+      - Model combination weights and rationale
+      - Performance metrics and validation results
+      - Executive summary and recommendations
+    agent: "ensemble_coordinator"
+    tools:
+      - combine_forecasts
+      - calculate_ensemble_weights
+      - estimate_uncertainty
+      - validate_ensemble_performance
+      - generate_forecast_report
+    dependencies: ["trend_analysis", "seasonality_detection", "anomaly_detection"]
+    async_execution: true
+    timeout: 180
+
+# Task Execution Configuration
+execution:
+  mode: "sequential"  # Options: sequential, parallel, hybrid
+  parallel_tasks: ["trend_analysis", "seasonality_detection", "anomaly_detection"]
+  max_retries: 3
+  retry_delay: 5
+  graceful_degradation: true
+  
+# Output Configuration
+output:
+  format: "json"
+  include_metadata: true
+  save_intermediate: true
+  compression: false
+  
+# Validation Rules
+validation:
+  required_outputs: ["trend_analysis", "seasonality_detection", "ensemble_forecasting"]
+  quality_checks: true
+  performance_thresholds:
+    max_execution_time: 600  # 10 minutes total
+    min_accuracy: 0.7
+    max_memory_usage: "4GB"

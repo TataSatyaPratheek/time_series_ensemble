@@ -1,0 +1,108 @@
+# Agent Configuration for Time Series Forecasting Ensemble
+agents:
+  trend_analyst:
+    role: "Time Series Trend Analyst"
+    goal: "Identify and analyze long-term patterns, trends, and structural changes in temporal data using statistical and ML methods"
+    backstory: |
+      You are an expert time series analyst specializing in trend detection and long-term pattern analysis.
+      You have deep knowledge of statistical decomposition, change point detection, and trend extrapolation methods.
+      Your strength lies in identifying subtle long-term patterns that other models might miss.
+    model: "${TREND_ANALYSIS_MODEL}"
+    temperature: "${TREND_AGENT_TEMPERATURE}"
+    max_tokens: 2048
+    tools:
+      - analyze_trend
+      - detect_change_points
+      - extrapolate_trend
+      - validate_trend_strength
+    memory_enabled: true
+    verbose: true
+    allow_delegation: false
+    max_iter: 3
+    max_execution_time: 120
+
+  seasonality_detector:
+    role: "Seasonality Pattern Specialist"
+    goal: "Detect, analyze, and model seasonal patterns including multiple seasonalities, holidays, and cyclical behaviors"
+    backstory: |
+      You are a specialist in seasonal pattern recognition with expertise in Fourier analysis, 
+      decomposition techniques, and holiday effect modeling. You excel at identifying both 
+      obvious and subtle seasonal patterns across different time scales.
+    model: "${SEASONALITY_MODEL}"
+    temperature: "${SEASONALITY_AGENT_TEMPERATURE}"
+    max_tokens: 2048
+    tools:
+      - detect_seasonality
+      - analyze_multiple_seasons
+      - model_holiday_effects
+      - validate_seasonal_stability
+    memory_enabled: true
+    verbose: true
+    allow_delegation: false
+    max_iter: 3
+    max_execution_time: 120
+
+  anomaly_hunter:
+    role: "Anomaly Detection Specialist"
+    goal: "Identify outliers, anomalies, and unusual patterns that could indicate data quality issues or significant events"
+    backstory: |
+      You are an expert in statistical outlier detection and anomaly identification. 
+      You use multiple detection methods and can distinguish between different types of anomalies.
+      Your expertise helps ensure data quality and identifies significant events in time series.
+    model: "${ANOMALY_DETECTION_MODEL}"
+    temperature: "${ANOMALY_AGENT_TEMPERATURE}"
+    max_tokens: 2048
+    tools:
+      - detect_statistical_outliers
+      - identify_contextual_anomalies
+      - analyze_anomaly_patterns
+      - validate_anomaly_significance
+    memory_enabled: true
+    verbose: true
+    allow_delegation: false
+    max_iter: 3
+    max_execution_time: 120
+
+  ensemble_coordinator:
+    role: "Ensemble Forecasting Coordinator"
+    goal: "Orchestrate multiple forecasting models, combine predictions optimally, and provide final ensemble forecasts with uncertainty estimates"
+    backstory: |
+      You are the master coordinator with deep understanding of ensemble methods, model combination strategies,
+      and uncertainty quantification. You synthesize insights from specialized agents and produce
+      robust, accurate forecasts with proper confidence intervals.
+    model: "${ENSEMBLE_COORDINATOR_MODEL}"
+    temperature: "${COORDINATOR_TEMPERATURE}"
+    max_tokens: 4096
+    tools:
+      - combine_forecasts
+      - calculate_ensemble_weights
+      - estimate_uncertainty
+      - validate_ensemble_performance
+      - generate_forecast_report
+    memory_enabled: true
+    verbose: true
+    allow_delegation: true
+    max_iter: 5
+    max_execution_time: 180
+    
+# Agent Interaction Patterns
+collaboration:
+  sequential_processing: true
+  parallel_analysis: false  # Set to true for independent analysis
+  cross_validation: true
+  consensus_required: false
+  
+# Memory and Learning
+memory:
+  enabled: true
+  max_entries: 1000
+  embedding_model: "${EMBEDDING_MODEL}"
+  similarity_threshold: 0.8
+  memory_decay: 0.95
+
+# Performance Settings
+performance:
+  max_concurrent_agents: 2  # Optimized for M1 Air 8GB
+  request_timeout: 30
+  retry_attempts: 3
+  backoff_factor: 1.5

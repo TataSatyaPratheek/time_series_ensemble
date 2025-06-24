@@ -1,0 +1,183 @@
+# Model Configuration for Time Series Forecasting Ensemble
+statistical_models:
+  arima:
+    max_p: 5
+    max_d: 2
+    max_q: 5
+    seasonal: true
+    max_P: 2
+    max_D: 1
+    max_Q: 2
+    max_order: 10
+    stepwise: true
+    approximation: false
+    method: "lbfgs"
+    maxiter: 50
+    
+  prophet:
+    growth: "linear"  # Options: linear, logistic
+    seasonality_mode: "additive"  # Options: additive, multiplicative
+    n_changepoints: 25
+    changepoint_range: 0.8
+    yearly_seasonality: "auto"
+    weekly_seasonality: "auto"
+    daily_seasonality: "auto"
+    holidays_prior_scale: 10.0
+    seasonality_prior_scale: 10.0
+    changepoint_prior_scale: 0.05
+    mcmc_samples: 0
+    interval_width: 0.8
+    uncertainty_samples: 1000
+
+  exponential_smoothing:
+    trend: "add"  # Options: add, mul
+    seasonal: "add"  # Options: add, mul
+    seasonal_periods: null  # Auto-detect
+    damped_trend: false
+    initialization_method: "estimated"
+    use_boxcox: false
+    
+machine_learning_models:
+  xgboost:
+    n_estimators: 100
+    max_depth: 6
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+    n_jobs: -1
+    reg_alpha: 0.0
+    reg_lambda: 1.0
+    
+  lightgbm:
+    n_estimators: 100
+    max_depth: -1
+    learning_rate: 0.1
+    num_leaves: 31
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+    n_jobs: -1
+    reg_alpha: 0.0
+    reg_lambda: 0.0
+    force_col_wise: true  # M1 optimization
+    
+  random_forest:
+    n_estimators: 100
+    max_depth: null
+    min_samples_split: 2
+    min_samples_leaf: 1
+    max_features: "sqrt"
+    random_state: 42
+    n_jobs: -1
+    
+deep_learning_models:
+  lstm:
+    hidden_size: 128
+    num_layers: 2
+    dropout: 0.2
+    bidirectional: false
+    batch_size: 32
+    epochs: 100
+    learning_rate: 0.001
+    patience: 10
+    min_delta: 0.0001
+    
+  transformer:
+    d_model: 128
+    nhead: 8
+    num_encoder_layers: 4
+    dim_feedforward: 512
+    dropout: 0.1
+    activation: "relu"
+    batch_size: 32
+    epochs: 100
+    learning_rate: 0.0001
+
+# Ensemble Configuration
+ensemble:
+  methods:
+    - "simple_average"
+    - "weighted_average" 
+    - "stacking"
+    - "bayesian_model_averaging"
+    
+  weighting_strategies:
+    - "equal_weights"
+    - "performance_based"
+    - "dynamic_weighting"
+    - "cross_validation_based"
+    
+  meta_learners:
+    - "linear_regression"
+    - "ridge_regression"
+    - "elastic_net"
+    
+  performance_metrics:
+    - "mae"
+    - "rmse"
+    - "mape"
+    - "mase"
+    - "smape"
+
+# Hardware Optimization for M1 Air 8GB
+optimization:
+  memory_efficient: true
+  use_quantization: true
+  max_memory_gb: 6
+  parallel_jobs: 4
+  batch_processing: true
+  lazy_loading: true
+  model_caching: true
+  
+  # M1 specific optimizations
+  metal_acceleration: true
+  arm64_optimization: true
+  memory_mapping: true
+  
+# Forecasting Configuration
+forecasting:
+  horizons: [1, 7, 30, 90]  # Days ahead
+  confidence_levels: [0.8, 0.9, 0.95]
+  cross_validation:
+    n_splits: 5
+    test_size: 0.2
+    gap: 0
+    
+  backtesting:
+    start_ratio: 0.7
+    step_size: 1
+    forecast_horizon: 30
+    
+# Data Processing
+preprocessing:
+  scaling:
+    method: "standard"  # Options: standard, minmax, robust
+    feature_range: [0, 1]
+    
+  missing_values:
+    method: "interpolation"  # Options: interpolation, forward_fill, backward_fill
+    limit: null
+    
+  outlier_detection:
+    method: "iqr"  # Options: iqr, zscore, isolation_forest
+    threshold: 1.5
+    action: "clip"  # Options: remove, clip, transform
+    
+feature_engineering:
+  lag_features:
+    enabled: true
+    max_lags: 10
+    
+  rolling_features:
+    enabled: true
+    windows: [7, 14, 30]
+    statistics: ["mean", "std", "min", "max"]
+    
+  fourier_features:
+    enabled: true
+    max_order: 10
+    
+  holiday_features:
+    enabled: true
+    country: "US"  # Adjust as needed

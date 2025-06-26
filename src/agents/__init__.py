@@ -93,7 +93,7 @@ def create_agent_ensemble(agents: List[str], **kwargs) -> Dict[str, Any]:
         try:
             agent_ensemble[agent_name] = get_agent_by_name(agent_name, **kwargs)
         except Exception as e:
-            logger.warning(f"Failed to create agent '{agent_name}': {str(e)}")
+            logger.warning(f"Failed to create agent '{agent_name}': {e}")
     
     return agent_ensemble
 

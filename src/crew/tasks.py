@@ -198,13 +198,13 @@ class EnhancedTask:
             try:
                 if asyncio.iscoroutinefunction(agent_method):
                     self.results = await asyncio.wait_for(
-                        agent_method(context.get('series'), use_llm_reasoning=True),
+                        agent_method(context), # Pass the entire context
                         timeout=self.timeout
                     )
                 else:
                     # Run synchronous method in thread pool
                     self.results = await asyncio.wait_for(
-                        asyncio.to_thread(agent_method, context.get('series')),
+                        asyncio.to_thread(agent_method, context), # Pass the entire context
                         timeout=self.timeout
                     )
             except asyncio.TimeoutError:

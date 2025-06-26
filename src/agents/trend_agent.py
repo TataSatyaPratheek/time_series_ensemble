@@ -12,7 +12,7 @@ from datetime import datetime
 
 # CrewAI imports
 from crewai import Agent, Task
-from local_llm_function_calling import Generator
+from src.llm.direct_interface import DirectOllamaInterface
 
 # Project imports
 from src.config import settings
@@ -121,11 +121,11 @@ class TrendAnalysisAgent:
         
         # Initialize LLM generator
         try:
-            self.llm_generator = Generator.hf(self.functions, self.llm_model)
+            self.llm_interface = DirectOllamaInterface(model_name=self.llm_model)
             logger.info(f"TrendAgent initialized with LLM: {self.llm_model}")
         except Exception as e:
             logger.warning(f"LLM initialization failed: {str(e)}, using fallback mode")
-            self.llm_generator = None
+            self.llm_interface = None
     
     def get_crewai_agent(self) -> Agent:
         """
@@ -217,7 +217,7 @@ class TrendAnalysisAgent:
                 }
                 
         except Exception as e:
-            logger.error(f"Trend strength analysis failed: {str(e)}")
+            logger.error(f"Trend strength analysis failed: {e}")
             raise AgentError(f"Trend analysis error: {str(e)}") from e
     
     async def detect_change_points(self, 
@@ -278,7 +278,7 @@ class TrendAnalysisAgent:
             }
             
         except Exception as e:
-            logger.error(f"Change point detection failed: {str(e)}")
+            logger.error(f"Change point detection failed: {e}")
             raise AgentError(f"Change point detection error: {str(e)}") from e
     
     async def extrapolate_trend(self, 
@@ -340,7 +340,7 @@ class TrendAnalysisAgent:
             }
             
         except Exception as e:
-            logger.error(f"Trend extrapolation failed: {str(e)}")
+            logger.error(f"Trend extrapolation failed: {e}")
             raise AgentError(f"Trend extrapolation error: {str(e)}") from e
     
     async def validate_trend_significance(self, 
@@ -392,23 +392,26 @@ class TrendAnalysisAgent:
             }
             
         except Exception as e:
-            logger.error(f"Trend validation failed: {str(e)}")
+            logger.error(f"Trend validation failed: {e}")
             raise AgentError(f"Trend validation error: {str(e)}") from e
     
     async def analyze_comprehensive_trend(self, 
-                                        series: pd.Series,
-                                        use_llm_reasoning: bool = True) -> Dict[str, Any]:
+                                        context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Comprehensive trend analysis using multiple methods and LLM reasoning.
         
         Args:
-            series: Time series data
-            use_llm_reasoning: Whether to use LLM for analysis reasoning
+            context: Dictionary containing 'series' (pd.Series) and 'use_llm_reasoning' (bool)
             
         Returns:
             Complete trend analysis results
         """
-        start_time = asyncio.get_event_loop().time()
+        series = context.get('series')
+        use_llm_reasoning = context.get('use_llm_reasoning', True)
+        if series is None:
+            raise ValueError("Time series data ('series') not found in context for TrendAnalysisAgent.")
+
+        start_time = asyncio.get_event_loop().time() # type: ignore
         
         try:
             logger.info(f"TrendAgent: Starting comprehensive trend analysis for {len(series)} observations")
@@ -441,7 +444,7 @@ class TrendAnalysisAgent:
             
             # 6. LLM-based reasoning (if available)
             llm_insights = {}
-            if use_llm_reasoning and self.llm_generator:
+            if use_llm_reasoning and self.llm_interface:
                 try:
                     # Generate insights using LLM
                     prompt = f"""
@@ -460,11 +463,19 @@ class TrendAnalysisAgent:
                     4. Potential risks or opportunities
                     """
                     
-                    llm_response = await asyncio.to_thread(self.llm_generator.generate, prompt)
+                    system_prompt = """You are an expert time series trend analyst with deep knowledge of statistical analysis 
+                and business implications. Provide strategic insights for forecasting and business decision-making."""
+                
+                    llm_response = await self.llm_interface.query_llm_async(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=0.1
+                )
+
                     llm_insights = {'analysis': llm_response, 'timestamp': datetime.now().isoformat()}
                     
                 except Exception as e:
-                    logger.warning(f"LLM reasoning failed: {str(e)}")
+                    logger.warning(f"LLM reasoning failed: {e}")
                     llm_insights = {'error': str(e)}
             
             # Compile results
@@ -481,7 +492,7 @@ class TrendAnalysisAgent:
                 'llm_insights': llm_insights
             }
             
-            self.analysis_metadata = {
+            self.analysis_metadata = { # type: ignore
                 'analysis_time': asyncio.get_event_loop().time() - start_time,
                 'series_length': len(series),
                 'models_used': ['STL', 'ExponentialSmoothing', 'ARIMA', 'Linear'],
@@ -499,7 +510,7 @@ class TrendAnalysisAgent:
             }
             
         except Exception as e:
-            error_msg = f"Comprehensive trend analysis failed: {str(e)}"
+            error_msg = f"Comprehensive trend analysis failed: {e}"
             logger.error(error_msg)
             raise AgentError(error_msg) from e
     
@@ -515,7 +526,7 @@ class TrendAnalysisAgent:
         """
         if not self.is_fitted:
             raise AgentError("TrendAgent must be fitted before forecasting")
-        
+
         try:
             forecasts = {}
             
@@ -550,7 +561,7 @@ class TrendAnalysisAgent:
             }
             
         except Exception as e:
-            error_msg = f"Trend forecasting failed: {str(e)}"
+            error_msg = f"Trend forecasting failed: {e}"
             logger.error(error_msg)
             raise AgentError(error_msg) from e
     

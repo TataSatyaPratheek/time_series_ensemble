@@ -141,7 +141,7 @@ class AsyncMLModel:
             return self.fit_metrics
             
         except Exception as e:
-            error_msg = f"{self.model_name} model fitting failed: {str(e)}"
+            error_msg = f"{self.model_name} model fitting failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
     
@@ -208,7 +208,7 @@ class AsyncMLModel:
             return result
             
         except Exception as e:
-            error_msg = f"{self.model_name} prediction failed: {str(e)}"
+            error_msg = f"{self.model_name} prediction failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
     
@@ -247,7 +247,7 @@ class AsyncMLModel:
             }
             
         except Exception as e:
-            logger.warning(f"Cross-validation failed for {self.model_name}: {str(e)}")
+            logger.warning(f"Cross-validation failed for {self.model_name}: {e}")
             return {}
 
 
@@ -421,7 +421,7 @@ async def create_time_series_features(df: pd.DataFrame,
         return X, y
         
     except Exception as e:
-        error_msg = f"Feature engineering failed: {str(e)}"
+        error_msg = f"Feature engineering failed: {e}"
         logger.error(error_msg)
         raise ModelError(error_msg) from e
 
@@ -493,7 +493,7 @@ async def select_best_ml_model(X: pd.DataFrame,
             logger.info(f"{model_name}: CV MAE = {cv_score:.4f}")
             
         except Exception as e:
-            logger.warning(f"Model {model_name} failed: {str(e)}")
+            logger.warning(f"Model {model_name} failed: {e}")
             continue
     
     if best_model is None:

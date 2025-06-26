@@ -14,8 +14,8 @@ from sklearn.preprocessing import StandardScaler
 from scipy import stats
 
 # CrewAI imports
-from crewai import Agent, Task
-from local_llm_function_calling import Generator
+from crewai import Agent, Task # type: ignore
+from src.llm.direct_interface import DirectOllamaInterface
 
 # Project imports
 from src.config import settings
@@ -124,11 +124,11 @@ class AnomalyDetectionAgent:
         
         # Initialize LLM generator
         try:
-            self.llm_generator = Generator.hf(self.functions, self.llm_model)
+            self.llm_interface = DirectOllamaInterface(model_name=self.llm_model)
             logger.info(f"AnomalyAgent initialized with LLM: {self.llm_model}")
         except Exception as e:
             logger.warning(f"LLM initialization failed: {str(e)}, using fallback mode")
-            self.llm_generator = None
+            self.llm_interface = None
     
     def get_crewai_agent(self) -> Agent:
         """Create CrewAI agent instance for orchestration."""
@@ -227,7 +227,7 @@ class AnomalyDetectionAgent:
             }
             
         except Exception as e:
-            logger.error(f"Statistical outlier detection failed: {str(e)}")
+            logger.error(f"Statistical outlier detection failed: {e}")
             raise AgentError(f"Statistical outlier detection error: {str(e)}") from e
     
     async def identify_contextual_anomalies(self, 
@@ -336,7 +336,7 @@ class AnomalyDetectionAgent:
             }
             
         except Exception as e:
-            logger.error(f"Contextual anomaly detection failed: {str(e)}")
+            logger.error(f"Contextual anomaly detection failed: {e}")
             raise AgentError(f"Contextual anomaly detection error: {str(e)}") from e
     
     async def analyze_anomaly_patterns(self, 
@@ -495,7 +495,7 @@ class AnomalyDetectionAgent:
             }
             
         except Exception as e:
-            logger.error(f"Anomaly pattern analysis failed: {str(e)}")
+            logger.error(f"Anomaly pattern analysis failed: {e}")
             raise AgentError(f"Anomaly pattern analysis error: {str(e)}") from e
     
     async def validate_anomaly_significance(self, 
@@ -602,26 +602,28 @@ class AnomalyDetectionAgent:
             }
             
         except Exception as e:
-            logger.error(f"Anomaly significance validation failed: {str(e)}")
+            logger.error(f"Anomaly significance validation failed: {e}")
             raise AgentError(f"Anomaly significance validation error: {str(e)}") from e
     
     async def analyze_comprehensive_anomalies(self, 
-                                            series: pd.Series,
-                                            seasonal_component: Optional[np.ndarray] = None,
-                                            trend_component: Optional[np.ndarray] = None,
-                                            use_llm_reasoning: bool = True) -> Dict[str, Any]:
+                                            context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Comprehensive anomaly analysis using multiple methods and LLM reasoning.
         
         Args:
-            series: Time series data
-            seasonal_component: Seasonal component (optional)
-            trend_component: Trend component (optional)
-            use_llm_reasoning: Whether to use LLM for analysis reasoning
+            context: Dictionary containing 'series' (pd.Series), 'seasonal_component' (np.ndarray, optional),
+                     'trend_component' (np.ndarray, optional), and 'use_llm_reasoning' (bool)
             
         Returns:
             Complete anomaly analysis results
         """
+        series = context.get('series')
+        seasonal_component = context.get('SeasonalityDetection_results', {}).get('seasonality_analysis', {}).get('seasonal_components', {}).get('combined_seasonal') # Attempt to get combined seasonal component
+        trend_component = context.get('TrendAnalysis_results', {}).get('trend_analysis', {}).get('components', {}).get('trend') # Attempt to get trend component
+        use_llm_reasoning = context.get('use_llm_reasoning', True)
+        if series is None:
+            raise ValueError("Time series data ('series') not found in context for AnomalyDetectionAgent.")
+
         start_time = asyncio.get_event_loop().time()
         
         try:
@@ -726,7 +728,7 @@ class AnomalyDetectionAgent:
             
             # 7. LLM-based reasoning (if available)
             llm_insights = {}
-            if use_llm_reasoning and self.llm_generator and self.detected_anomalies:
+            if use_llm_reasoning and self.llm_interface and self.detected_anomalies:
                 try:
                     n_anomalies = len(self.detected_anomalies)
                     anomaly_rate = n_anomalies / len(series) * 100
@@ -747,11 +749,18 @@ class AnomalyDetectionAgent:
                     5. Recommended actions
                     """
                     
-                    llm_response = await asyncio.to_thread(self.llm_generator.generate, prompt)
+                    system_prompt = """You are an expert in anomaly detection and data quality analysis. 
+                    Analyze the provided anomaly detection results and provide strategic insights for business decision-making."""
+                    
+                    llm_response = await self.llm_interface.query_llm_async(
+                        prompt=prompt,
+                        system_prompt=system_prompt,
+                        temperature=0.1
+                    )
                     llm_insights = {'analysis': llm_response, 'timestamp': datetime.now().isoformat()}
                     
                 except Exception as e:
-                    logger.warning(f"LLM reasoning failed: {str(e)}")
+                    logger.warning(f"LLM reasoning failed: {e}")
                     llm_insights = {'error': str(e)}
             
             # Compile final results
@@ -785,7 +794,7 @@ class AnomalyDetectionAgent:
             }
             
         except Exception as e:
-            error_msg = f"Comprehensive anomaly analysis failed: {str(e)}"
+            error_msg = f"Comprehensive anomaly analysis failed: {e}"
             logger.error(error_msg)
             raise AgentError(error_msg) from e
 
@@ -831,7 +840,7 @@ class AnomalyDetectionAgent:
             }
             
         except Exception as e:
-            logger.error(f"Isolation Forest detection failed: {str(e)}")
+            logger.error(f"Isolation Forest detection failed: {e}")
             raise AgentError(f"Isolation Forest detection error: {str(e)}") from e
 
     async def get_anomaly_impact_assessment(self) -> Dict[str, Any]:
@@ -864,7 +873,7 @@ class AnomalyDetectionAgent:
             }
             
         except Exception as e:
-            logger.error(f"Anomaly impact assessment failed: {str(e)}")
+            logger.error(f"Anomaly impact assessment failed: {e}")
             return {'status': 'error', 'error': str(e)}
 
     def _assess_data_quality_impact(self) -> Dict[str, Any]:
@@ -1113,7 +1122,7 @@ class AnomalyDetectionAgent:
                 return json.dumps(report, indent=2, default=str)
             elif format == 'summary':
                 return self._create_summary_report(report)
-            else:
+            else: # type: ignore
                 return report
                 
         except Exception as e:

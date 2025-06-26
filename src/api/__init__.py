@@ -107,7 +107,7 @@ async def check_api_health():
             response = await client.get("http://localhost:8000/health", timeout=5)
             return response.status_code == 200
     except Exception:
-        return False
+        return False # type: ignore
 
 # Development utilities
 def create_test_client():

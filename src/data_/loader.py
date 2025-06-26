@@ -219,7 +219,7 @@ class AsyncTimeSeriesLoader:
             elif hasattr(df.index, 'inferred_freq') and df.index.inferred_freq:
                 frequency = df.index.inferred_freq
             else:
-                # Try to infer frequency
+                # Try to infer frequency # type: ignore
                 try:
                     frequency = await asyncio.to_thread(pd.infer_freq, df.index)
                 except:

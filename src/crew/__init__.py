@@ -185,7 +185,7 @@ async def quick_forecast(series: 'pd.Series',
         
     except Exception as e:
         logger.error(f"Quick forecast failed: {str(e)}")
-        raise
+        raise # type: ignore
 
 # Auto-setup on import
 try:

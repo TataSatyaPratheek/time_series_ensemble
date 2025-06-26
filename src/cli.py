@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.panel import Panel
+from rich.prompt import Confirm
 
 from src.crew import quick_forecast, list_available_workflows
 from src.api.endpoints import app
@@ -162,6 +163,40 @@ def workflows():
         
     except Exception as e:
         console.print(f"❌ Error: {str(e)}", style="bold red")
+        raise typer.Exit(1)
+
+@cli_app.command()
+def setup():
+    """Setup Ollama models for time series forecasting."""
+    from src.llm.model_manager import model_manager
+    
+    console.print(Panel.fit("🤖 Setting up Ollama Models", style="bold blue"))
+    
+    try:
+        # Check Ollama availability
+        if not model_manager.check_ollama_available():
+            console.print("❌ Ollama not found. Please install Ollama first:", style="bold red")
+            console.print("Visit: https://ollama.ai/download")
+            raise typer.Exit(1)
+        
+        console.print("✅ Ollama is available")
+        
+        # Get recommended models
+        recommended = model_manager.get_recommended_models()
+        console.print(f"📋 Recommended models: {', '.join(recommended)}")
+        
+        # Download models
+        for model in recommended[:2]:  # Download top 2 recommended
+            if Confirm.ask(f"Download {model}?", default=True):
+                console.print(f"📥 Downloading {model}...")
+                success, message = model_manager.download_model(model)
+                if success:
+                    console.print(f"✅ {message}", style="bold green")
+                else:
+                    console.print(f"❌ {message}", style="bold red")
+        
+    except Exception as e:
+        console.print(f"❌ Setup failed: {str(e)}", style="bold red")
         raise typer.Exit(1)
 
 @cli_app.command()

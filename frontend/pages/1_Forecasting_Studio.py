@@ -211,17 +211,17 @@ if hasattr(st.session_state, 'forecast_results') and st.session_state.forecast_r
         tab1, tab2, tab3, tab4 = st.tabs(["📈 Forecast Plot", "🧠 LLM Insights", "🕵️ Agent Analysis", "💡 Recommendations"])
         
         with tab1:
-            if hasattr(st.session_state, 'time_series_data'):
+            if hasattr(st.session_state, 'time_series_data'): # type: ignore
                 display_forecast_chart(st.session_state.time_series_data, results)
         
         with tab2:
-            display_llm_insights(results.get('metadata', {}))
+            display_llm_insights(results) # Pass full results
 
         with tab3:
-            display_agent_analysis(results.get('metadata', {}))
+            display_agent_analysis(results) # Pass full results
 
         with tab4:
-            display_recommendations(results.get('metadata', {}))
+            display_recommendations(results) # Pass full results
     
     else:
         st.error("Could not display results due to a previous error.")

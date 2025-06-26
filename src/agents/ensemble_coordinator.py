@@ -12,7 +12,7 @@ from datetime import datetime
 
 # CrewAI imports
 from crewai import Agent, Task
-from local_llm_function_calling import Generator
+from src.llm.direct_interface import DirectOllamaInterface
 
 # Project imports
 from src.config import settings
@@ -133,11 +133,11 @@ class EnsembleCoordinatorAgent:
         
         # Initialize LLM generator
         try:
-            self.llm_generator = Generator.hf(self.functions, self.llm_model)
+            self.llm_interface = DirectOllamaInterface(model_name=self.llm_model)
             logger.info(f"EnsembleCoordinator initialized with LLM: {self.llm_model}")
         except Exception as e:
             logger.warning(f"LLM initialization failed: {str(e)}, using fallback mode")
-            self.llm_generator = None
+            self.llm_interface = None
     
     def get_crewai_agent(self) -> Agent:
         """Create CrewAI agent instance for orchestration."""
@@ -593,7 +593,7 @@ class EnsembleCoordinatorAgent:
             
             # LLM-based insights (if available)
             llm_insights = {}
-            if self.llm_generator:
+            if self.llm_interface:
                 try:
                     prompt = f"""
                     Analyze the following ensemble forecasting results and provide strategic insights:
@@ -612,7 +612,14 @@ class EnsembleCoordinatorAgent:
                     5. Future improvement recommendations
                     """
                     
-                    llm_response = await asyncio.to_thread(self.llm_generator.generate, prompt)
+                    system_prompt = """You are a master ensemble forecasting coordinator with expertise in model combination strategies 
+                    and uncertainty quantification. Provide strategic insights for business decision-making."""
+                    
+                    llm_response = await self.llm_interface.query_llm_async(
+                        prompt=prompt,
+                        system_prompt=system_prompt,
+                        temperature=0.1
+                    )
                     llm_insights = {'strategic_analysis': llm_response, 'timestamp': datetime.now().isoformat()}
                     
                 except Exception as e:
@@ -752,27 +759,35 @@ class EnsembleCoordinatorAgent:
         return recommendations
 
     async def coordinate_ensemble_forecast(self,
-                                         agent_results: Dict[str, Any],
-                                         workflow_context: Dict[str, Any], # Add this argument
-                                         forecast_horizon: int = 30,
-                                         ensemble_method: str = "weighted_average",
-                                         use_llm_reasoning: bool = True) -> Dict[str, Any]:
+                                         context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main coordination method that orchestrates the entire ensemble forecasting process.
         
         Args:
-            agent_results: Results from trend, seasonality, and anomaly agents
-            forecast_horizon: Number of periods to forecast
-            ensemble_method: Method for combining predictions
-            use_llm_reasoning: Whether to use LLM for strategic insights
+            context: Dictionary containing results from other agents (e.g., 'TrendAnalysis_results',
+                     'SeasonalityDetection_results', 'AnomalyDetection_results'),
+                     'forecast_horizon' (int), 'ensemble_method' (str), and 'use_llm_reasoning' (bool).
             
         Returns:
             Complete ensemble forecast with coordination results
         """
+        # Extract necessary data from the context
+        agent_results = {
+            'trend_analysis': context.get('TrendAnalysis_results', {}),
+            'seasonality_analysis': context.get('SeasonalityDetection_results', {}),
+            'anomaly_detection': context.get('AnomalyDetection_results', {})
+        }
+        forecast_horizon = context.get('forecast_horizon', 30)
+        ensemble_method = context.get('ensemble_method', "weighted_average")
+        use_llm_reasoning = context.get('use_llm_reasoning', True)
+        
+        # Store the full workflow context for internal use (e.g., _extract_agent_forecasts)
+        self.workflow_context = context
+
         start_time = asyncio.get_event_loop().time()
         
         try:
-            self.workflow_context = workflow_context # Store the workflow context
+            self.workflow_context = context # Store the workflow context
             logger.info(f"EnsembleCoordinator: Starting ensemble coordination for {forecast_horizon} periods")
             
             # Extract individual agent forecasts
@@ -859,20 +874,24 @@ class EnsembleCoordinatorAgent:
             raise AgentError(error_msg) from e
     
     async def _extract_agent_forecasts(self, 
-                                     agent_results: Dict[str, Any], 
+                                     agent_results_from_context: Dict[str, Any], # Renamed to avoid confusion with self.workflow_context
                                      horizon: int) -> List[ModelPrediction]:
         """Extract and format forecasts from agent results, providing fallbacks."""
         model_predictions = []
         
         # Get the original series from the workflow context if available, for fallback predictions
-        original_series = self.workflow_context.get('series')
+        # The original series is now directly in self.workflow_context
+        original_series = self.workflow_context.get('series') 
         if original_series is not None and not original_series.empty:
             baseline_value = original_series.iloc[-1] # Last observed value
         else:
             baseline_value = 100.0 # Default if no series context
 
         # Extract trend forecasts
-        trend_results = agent_results.get('trend_analysis', {})
+        # Use the agent_results_from_context passed to this method
+        # These are the actual results from the TrendAnalysis task
+        trend_results = agent_results_from_context.get('trend_analysis', {})
+        
         if 'forecasts' in trend_results and trend_results['forecasts']:
             trend_forecasts = trend_results['forecasts']
             for method, forecast in trend_forecasts.items():
@@ -891,8 +910,9 @@ class EnsembleCoordinatorAgent:
                 metadata={'agent': 'trend', 'method': 'fallback_constant'}
             ))
         
-        # Extract seasonality forecasts
-        seasonality_results = agent_results.get('seasonality_analysis', {})
+        # Extract seasonality forecasts from the passed agent_results_from_context
+        seasonality_results = agent_results_from_context.get('seasonality_analysis', {})
+        
         if 'seasonal_forecasts' in seasonality_results and seasonality_results['seasonal_forecasts']:
             seasonal_forecasts = seasonality_results['seasonal_forecasts']
             for method, forecast_data in seasonal_forecasts.items():
@@ -913,7 +933,7 @@ class EnsembleCoordinatorAgent:
                 metadata={'agent': 'seasonality', 'method': 'fallback_constant'}
             ))
         
-        # Ensure at least 2 distinct ModelPrediction objects are always returned for ensemble
+        # Ensure at least 2 distinct ModelPrediction objects are always returned for ensemble (for robustness)
         if len(model_predictions) < 2:
             logger.warning("Less than 2 valid forecasts extracted, adding an additional baseline.")
             model_predictions.append(ModelPrediction(
@@ -924,12 +944,12 @@ class EnsembleCoordinatorAgent:
         
         return model_predictions
     
-    async def _assess_model_performances(self, agent_results: Dict[str, Any]) -> List[Dict[str, float]]:
+    async def _assess_model_performances(self, agent_results_from_context: Dict[str, Any]) -> List[Dict[str, float]]:
         """Assess performance of individual models from agent results."""
         performances = []
         
-        # Extract performance metrics from agent results
-        for agent_name, results in agent_results.items():
+        # Extract performance metrics from the passed agent_results_from_context
+        for agent_name, results in agent_results_from_context.items():
             if isinstance(results, dict):
                 # Look for performance metrics in different locations
                 metrics = results.get('fit_metrics', {})

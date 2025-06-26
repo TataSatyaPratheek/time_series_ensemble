@@ -71,28 +71,28 @@ def display_forecast_chart(
     st.plotly_chart(fig, use_container_width=True)
 
 def display_llm_insights(results: Dict[str, Any]):
-    """Renders the LLM-generated strategic insights."""
+    """Renders the LLM-generated strategic insights.""" # type: ignore
     st.subheader("🧠 LLM Strategic Insights")
-    insights = results.get('coordination_results', {}).get('comprehensive_report', {}).get('llm_strategic_insights', {})
+    insights = results.get('explanations', {}) # Access directly from the 'explanations' field
     
     if insights and insights.get('strategic_analysis'):
         st.markdown(insights['strategic_analysis'])
     else:
         st.info("No LLM insights were generated for this forecast.")
 
-def display_agent_analysis(results: Dict[str, Any]):
-    """Renders a detailed breakdown of each agent's analysis."""
+def display_agent_analysis(forecast_response: Dict[str, Any]): # Renamed 'results' to 'forecast_response' for clarity
+    """Renders a detailed breakdown of each agent's analysis.""" # type: ignore
     st.subheader("🕵️ Agent Analysis Breakdown")
 
-    agent_results = results.get('coordination_results', {})
+    agent_detailed_outputs = forecast_response.get('agent_results', {}) # Access directly from the 'agent_results' field
 
-    if not agent_results:
+    if not agent_detailed_outputs:
         st.warning("No detailed agent analysis available.")
         return
 
     # Trend Agent Analysis
     with st.expander("📈 Trend Agent Analysis", expanded=True):
-        trend_analysis = agent_results.get('TrendAnalysis_results', {}).get('trend_analysis', {})
+        trend_analysis = agent_detailed_outputs.get('TrendAnalysis', {}).get('trend_analysis', {}) # Access the 'trend_analysis' key within the TrendAnalysis output
         if trend_analysis:
             strength = trend_analysis.get('trend_strength', {})
             validation = trend_analysis.get('trend_validation', {})
@@ -109,7 +109,7 @@ def display_agent_analysis(results: Dict[str, Any]):
             
     # Seasonality Agent Analysis
     with st.expander("📅 Seasonality Agent Analysis"):
-        seasonality_analysis = agent_results.get('SeasonalityDetection_results', {}).get('seasonality_analysis', {})
+        seasonality_analysis = agent_detailed_outputs.get('SeasonalityDetection', {}).get('seasonality_analysis', {})
         if seasonality_analysis:
             periods = seasonality_analysis.get('period_detection', {}).get('detected_periods', [])
             holiday_impact = seasonality_analysis.get('holiday_effects', {}).get('holiday_impact', 0)
@@ -131,7 +131,7 @@ def display_agent_analysis(results: Dict[str, Any]):
 
     # Anomaly Agent Analysis
     with st.expander("🚨 Anomaly Agent Analysis"):
-        anomaly_analysis = agent_results.get('AnomalyDetection_results', {}).get('anomaly_analysis', {})
+        anomaly_analysis = agent_detailed_outputs.get('AnomalyDetection', {}).get('anomaly_analysis', {})
         if anomaly_analysis:
             anomalies = anomaly_analysis.get('detected_anomalies', [])
             impact = anomaly_analysis.get('impact_assessment', {}).get('impact_assessment', {})
@@ -146,14 +146,13 @@ def display_agent_analysis(results: Dict[str, Any]):
         else:
             st.write("No anomaly analysis data available.")
 
-def display_recommendations(results: Dict[str, Any]):
-    """Displays actionable recommendations from the forecast."""
+def display_recommendations(forecast_response: Dict[str, Any]): # Renamed 'results' to 'forecast_response' for clarity
+    """Displays actionable recommendations from the forecast.""" # type: ignore
     st.subheader("💡 Recommendations")
-    recommendations = results.get('coordination_results', {}).get('comprehensive_report', {}).get('recommendations', [])
+    recommendations = forecast_response.get('warnings', []) # Access directly from the 'warnings' field
     
     if recommendations:
         for i, rec in enumerate(recommendations, 1):
             st.warning(f"**Recommendation {i}:** {rec}")
     else:
         st.info("No specific recommendations were generated.")
-

@@ -95,7 +95,7 @@ class AsyncSimpleAverageEnsemble(BaseEnsemble):
             }
             
         except Exception as e:
-            error_msg = f"Simple average ensemble fitting failed: {str(e)}"
+            error_msg = f"Simple average ensemble fitting failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
     
@@ -138,7 +138,7 @@ class AsyncSimpleAverageEnsemble(BaseEnsemble):
             return result
             
         except Exception as e:
-            error_msg = f"Simple average combination failed: {str(e)}"
+            error_msg = f"Simple average combination failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
 
@@ -187,7 +187,7 @@ class AsyncWeightedAverageEnsemble(BaseEnsemble):
             }
             
         except Exception as e:
-            error_msg = f"Weighted ensemble fitting failed: {str(e)}"
+            error_msg = f"Weighted ensemble fitting failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
     
@@ -251,7 +251,7 @@ class AsyncWeightedAverageEnsemble(BaseEnsemble):
             return result
             
         except Exception as e:
-            error_msg = f"Weighted average combination failed: {str(e)}"
+            error_msg = f"Weighted average combination failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
     
@@ -357,7 +357,7 @@ class AsyncStackingEnsemble(BaseEnsemble):
             }
             
         except Exception as e:
-            error_msg = f"Stacking ensemble fitting failed: {str(e)}"
+            error_msg = f"Stacking ensemble fitting failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
     
@@ -393,7 +393,7 @@ class AsyncStackingEnsemble(BaseEnsemble):
             return result
             
         except Exception as e:
-            error_msg = f"Stacking combination failed: {str(e)}"
+            error_msg = f"Stacking combination failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
 
@@ -435,7 +435,7 @@ class AsyncBayesianModelAveraging(BaseEnsemble):
             }
             
         except Exception as e:
-            error_msg = f"Bayesian ensemble fitting failed: {str(e)}"
+            error_msg = f"Bayesian ensemble fitting failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
     
@@ -473,7 +473,7 @@ class AsyncBayesianModelAveraging(BaseEnsemble):
             return result
             
         except Exception as e:
-            error_msg = f"Bayesian combination failed: {str(e)}"
+            error_msg = f"Bayesian combination failed: {e}"
             logger.error(error_msg)
             raise ModelError(error_msg) from e
     

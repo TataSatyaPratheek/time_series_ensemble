@@ -1,6 +1,7 @@
 import os, json, urllib.parse
 from dotenv import load_dotenv
 from typing import Optional, List, Union
+from pydantic import BaseModel, Field
 
 # Load environment variables from .env file
 class Settings: # Merged class definition
@@ -9,12 +10,14 @@ class Settings: # Merged class definition
     OLLAMA_API_KEY: Optional[str] = os.getenv("OLLAMA_API_KEY")
     OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "127.0.0.1")
     OLLAMA_PORT: int = int(os.getenv("OLLAMA_PORT", "11434"))
+    DEFAULT_LLM_MODEL: str = "qwen3:1.7b"
+
 
     # --- Local Model Configuration (updated defaults to match .env) ---
-    TREND_ANALYSIS_MODEL: str = os.getenv("TREND_ANALYSIS_MODEL", "qwen3:1.7b")
-    SEASONALITY_MODEL: str = os.getenv("SEASONALITY_MODEL", "qwen3:1.7b")
-    ANOMALY_DETECTION_MODEL: str = os.getenv("ANOMALY_DETECTION_MODEL", "llama3.2:latest")
-    ENSEMBLE_COORDINATOR_MODEL: str = os.getenv("ENSEMBLE_COORDINATOR_MODEL", "llama3.2:latest")
+    TREND_ANALYSIS_MODEL: str = "qwen3:1.7b"
+    SEASONALITY_MODEL: str = "qwen3:1.7b"
+    ANOMALY_DETECTION_MODEL: str = "qwen3:1.7b"
+    ENSEMBLE_COORDINATOR_MODEL: str = "qwen3:1.7b"
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest")
 
     # --- Model Settings ---

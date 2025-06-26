@@ -139,9 +139,7 @@ class AsyncARIMAModel:
             
             # Default fitting parameters
             default_fit_params = {
-                'method': 'lbfgs', # Default method
-                # 'maxiter': 50, # Removed as it causes issues in some statsmodels versions
-                'disp': False
+                # 'method': 'lbfgs', # Not a valid parameter for statsmodels ARIMA/SARIMAX fit method
             }
             default_fit_params.update(fit_kwargs)
             

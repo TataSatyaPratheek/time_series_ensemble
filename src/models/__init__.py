@@ -136,7 +136,7 @@ def get_model_by_name(model_name: str, **kwargs):
         raise ValueError(f"Model '{model_name}' not found. Available models: {available_models}")
     
     model_class = MODEL_REGISTRY[model_name]
-    return model_class(**kwargs)
+    return model_class(**kwargs) # type: ignore
 
 def list_available_models(category: Optional[str] = None) -> List[str]:
     """

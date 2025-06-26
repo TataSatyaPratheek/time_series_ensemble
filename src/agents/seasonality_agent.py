@@ -14,7 +14,7 @@ from scipy.fft import fft, fftfreq
 
 # CrewAI imports
 from crewai import Agent, Task
-from local_llm_function_calling import Generator
+from src.llm.direct_interface import DirectOllamaInterface
 
 # Project imports
 from src.config import settings
@@ -121,11 +121,11 @@ class SeasonalityAgent:
         
         # Initialize LLM generator
         try:
-            self.llm_generator = Generator.hf(self.functions, self.llm_model)
+            self.llm_interface = DirectOllamaInterface(model_name=self.llm_model)
             logger.info(f"SeasonalityAgent initialized with LLM: {self.llm_model}")
         except Exception as e:
             logger.warning(f"LLM initialization failed: {str(e)}, using fallback mode")
-            self.llm_generator = None
+            self.llm_interface = None
     
     def get_crewai_agent(self) -> Agent:
         """Create CrewAI agent instance for orchestration."""
@@ -213,7 +213,7 @@ class SeasonalityAgent:
             }
             
         except Exception as e:
-            logger.error(f"Period detection failed: {str(e)}")
+            logger.error(f"Period detection failed: {e}")
             raise AgentError(f"Period detection error: {str(e)}") from e
     
     async def _detect_periods_autocorr(self, 
@@ -248,7 +248,7 @@ class SeasonalityAgent:
             return periods
             
         except Exception as e:
-            logger.warning(f"Autocorrelation period detection failed: {str(e)}")
+            logger.warning(f"Autocorrelation period detection failed: {e}")
             return []
     
     async def _detect_periods_fft(self, 
@@ -300,7 +300,7 @@ class SeasonalityAgent:
             return []
             
         except Exception as e:
-            logger.warning(f"FFT period detection failed: {str(e)}")
+            logger.warning(f"FFT period detection failed: {e}")
             return []
     
     async def _detect_periods_decomposition(self, 
@@ -353,7 +353,7 @@ class SeasonalityAgent:
             return periods
             
         except Exception as e:
-            logger.warning(f"Decomposition period detection failed: {str(e)}")
+            logger.warning(f"Decomposition period detection failed: {e}")
             return []
     
     async def _consolidate_periods(self, 
@@ -479,7 +479,7 @@ class SeasonalityAgent:
             }
             
         except Exception as e:
-            logger.error(f"Multiple seasons analysis failed: {str(e)}")
+            logger.error(f"Multiple seasons analysis failed: {e}")
             raise AgentError(f"Multiple seasons analysis error: {str(e)}") from e
     
     async def model_holiday_effects(self, 
@@ -563,7 +563,7 @@ class SeasonalityAgent:
             }
             
         except Exception as e:
-            logger.error(f"Holiday effects modeling failed: {str(e)}")
+            logger.error(f"Holiday effects modeling failed: {e}")
             raise AgentError(f"Holiday effects modeling error: {str(e)}") from e
     
     async def validate_seasonal_stability(self, 
@@ -655,23 +655,26 @@ class SeasonalityAgent:
             }
             
         except Exception as e:
-            logger.error(f"Seasonal stability validation failed: {str(e)}")
+            logger.error(f"Seasonal stability validation failed: {e}")
             raise AgentError(f"Seasonal stability validation error: {str(e)}") from e
     
     async def analyze_comprehensive_seasonality(self, 
-                                              series: pd.Series,
-                                              use_llm_reasoning: bool = True) -> Dict[str, Any]:
+                                              context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Comprehensive seasonality analysis using multiple methods and LLM reasoning.
         
         Args:
-            series: Time series data
-            use_llm_reasoning: Whether to use LLM for analysis reasoning
+            context: Dictionary containing 'series' (pd.Series) and 'use_llm_reasoning' (bool)
             
         Returns:
             Complete seasonality analysis results
         """
-        start_time = asyncio.get_event_loop().time()
+        series = context.get('series')
+        use_llm_reasoning = context.get('use_llm_reasoning', True)
+        if series is None:
+            raise ValueError("Time series data ('series') not found in context for SeasonalityAgent.")
+
+        start_time = asyncio.get_event_loop().time() # type: ignore
         
         try:
             logger.info(f"SeasonalityAgent: Starting comprehensive seasonality analysis for {len(series)} observations")
@@ -693,7 +696,7 @@ class SeasonalityAgent:
                 try:
                     dates = series.index.strftime('%Y-%m-%d').tolist()
                     holiday_effects = await self.model_holiday_effects(series.values, dates)
-                except Exception as e:
+                except Exception as e: # type: ignore
                     logger.warning(f"Holiday effects analysis failed: {str(e)}")
                     holiday_effects = {'error': str(e)}
             
@@ -710,7 +713,7 @@ class SeasonalityAgent:
             
             # 5. LLM-based reasoning (if available)
             llm_insights = {}
-            if use_llm_reasoning and self.llm_generator:
+            if use_llm_reasoning and self.llm_interface:
                 try:
                     # Generate insights using LLM
                     n_periods = len(self.detected_periods)
@@ -732,11 +735,18 @@ class SeasonalityAgent:
                     4. Seasonal adjustment recommendations
                     """
                     
-                    llm_response = await asyncio.to_thread(self.llm_generator.generate, prompt)
+                    system_prompt = """You are a specialist in seasonal pattern recognition with expertise in Fourier analysis, 
+                    decomposition techniques, and business seasonality patterns. Provide strategic insights for forecasting and business planning."""
+                    
+                    llm_response = await self.llm_interface.query_llm_async(
+                        prompt=prompt,
+                        system_prompt=system_prompt,
+                        temperature=0.2
+                    )
                     llm_insights = {'analysis': llm_response, 'timestamp': datetime.now().isoformat()}
                     
                 except Exception as e:
-                    logger.warning(f"LLM reasoning failed: {str(e)}")
+                    logger.warning(f"LLM reasoning failed: {e}")
                     llm_insights = {'error': str(e)}
             
             # Compile results
@@ -748,7 +758,7 @@ class SeasonalityAgent:
                 'llm_insights': llm_insights
             }
             
-            analysis_time = asyncio.get_event_loop().time() - start_time
+            analysis_time = asyncio.get_event_loop().time() - start_time # type: ignore
             
             self.is_fitted = True
             
@@ -766,7 +776,7 @@ class SeasonalityAgent:
             }
             
         except Exception as e:
-            error_msg = f"Comprehensive seasonality analysis failed: {str(e)}"
+            error_msg = f"Comprehensive seasonality analysis failed: {e}"
             logger.error(error_msg)
             raise AgentError(error_msg) from e
     
@@ -782,7 +792,7 @@ class SeasonalityAgent:
         """
         if not self.is_fitted:
             raise AgentError("SeasonalityAgent must be fitted before forecasting")
-        
+
         try:
             seasonal_forecasts = {}
             
@@ -847,7 +857,7 @@ class SeasonalityAgent:
             }
             
         except Exception as e:
-            error_msg = f"Seasonal forecasting failed: {str(e)}"
+            error_msg = f"Seasonal forecasting failed: {e}"
             logger.error(error_msg)
             raise AgentError(error_msg) from e
     

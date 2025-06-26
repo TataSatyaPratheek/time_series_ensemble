@@ -37,16 +37,20 @@ class TrendAnalysisAgent:
     
     def __init__(self, 
                  agent_config: Optional[Dict[str, Any]] = None,
-                 llm_model: str = settings.TREND_ANALYSIS_MODEL):
+                 llm_model: str = settings.TREND_ANALYSIS_MODEL,
+                 timeout: Optional[int] = None,
+                 **kwargs):
         """
         Initialize trend analysis agent.
         
         Args:
             agent_config: Agent configuration from YAML
             llm_model: Local LLM model for reasoning
+            timeout: Task timeout in seconds
         """
         self.agent_config = agent_config or {}
         self.llm_model = llm_model
+        self.timeout = timeout or 180  # Default 3 minutes
         
         # Initialize models
         self.stl_model = AsyncSTLDecomposition()
@@ -139,7 +143,8 @@ class TrendAnalysisAgent:
             tools=list(self.functions),
             llm=self.llm_model,
             verbose=True,
-            allow_delegation=False,
+            allow_delegation=False, # Keep as False unless specific delegation is intended
+            max_execution_time=self.timeout, # Pass the timeout to the CrewAI Agent
             memory=True
         )
     

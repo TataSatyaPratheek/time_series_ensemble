@@ -36,16 +36,20 @@ class EnsembleCoordinatorAgent:
     
     def __init__(self, 
                  agent_config: Optional[Dict[str, Any]] = None,
-                 llm_model: str = settings.ENSEMBLE_COORDINATOR_MODEL):
+                 llm_model: str = settings.ENSEMBLE_COORDINATOR_MODEL,
+                 timeout: Optional[int] = None,
+                 **kwargs):
         """
         Initialize ensemble coordinator agent.
         
         Args:
             agent_config: Agent configuration from YAML
             llm_model: Local LLM model for reasoning
+            timeout: Task timeout in seconds
         """
         self.agent_config = agent_config or {}
         self.llm_model = llm_model
+        self.timeout = timeout or 300  # Default 5 minutes
         
         # Initialize ensemble methods
         self.ensemble_methods = {}
@@ -146,7 +150,8 @@ class EnsembleCoordinatorAgent:
             tools=list(self.functions),
             llm=self.llm_model,
             verbose=True,
-            allow_delegation=True,
+            allow_delegation=True, # This agent needs to delegate to others
+            max_execution_time=self.timeout,
             memory=True
         )
     
@@ -748,6 +753,7 @@ class EnsembleCoordinatorAgent:
 
     async def coordinate_ensemble_forecast(self,
                                          agent_results: Dict[str, Any],
+                                         workflow_context: Dict[str, Any], # Add this argument
                                          forecast_horizon: int = 30,
                                          ensemble_method: str = "weighted_average",
                                          use_llm_reasoning: bool = True) -> Dict[str, Any]:
@@ -766,6 +772,7 @@ class EnsembleCoordinatorAgent:
         start_time = asyncio.get_event_loop().time()
         
         try:
+            self.workflow_context = workflow_context # Store the workflow context
             logger.info(f"EnsembleCoordinator: Starting ensemble coordination for {forecast_horizon} periods")
             
             # Extract individual agent forecasts
@@ -854,12 +861,19 @@ class EnsembleCoordinatorAgent:
     async def _extract_agent_forecasts(self, 
                                      agent_results: Dict[str, Any], 
                                      horizon: int) -> List[ModelPrediction]:
-        """Extract and format forecasts from agent results."""
+        """Extract and format forecasts from agent results, providing fallbacks."""
         model_predictions = []
         
+        # Get the original series from the workflow context if available, for fallback predictions
+        original_series = self.workflow_context.get('series')
+        if original_series is not None and not original_series.empty:
+            baseline_value = original_series.iloc[-1] # Last observed value
+        else:
+            baseline_value = 100.0 # Default if no series context
+
         # Extract trend forecasts
         trend_results = agent_results.get('trend_analysis', {})
-        if 'forecasts' in trend_results:
+        if 'forecasts' in trend_results and trend_results['forecasts']:
             trend_forecasts = trend_results['forecasts']
             for method, forecast in trend_forecasts.items():
                 if isinstance(forecast, list) and len(forecast) >= horizon:
@@ -868,10 +882,18 @@ class EnsembleCoordinatorAgent:
                         predictions=np.array(forecast[:horizon]),
                         metadata={'agent': 'trend', 'method': method}
                     ))
+        else:
+            # Fallback for TrendAnalysis
+            logger.warning("TrendAnalysis agent did not provide forecasts, creating a baseline.")
+            model_predictions.append(ModelPrediction(
+                model_name="trend_baseline",
+                predictions=np.full(horizon, baseline_value), # Simple constant forecast
+                metadata={'agent': 'trend', 'method': 'fallback_constant'}
+            ))
         
         # Extract seasonality forecasts
         seasonality_results = agent_results.get('seasonality_analysis', {})
-        if 'seasonal_forecasts' in seasonality_results:
+        if 'seasonal_forecasts' in seasonality_results and seasonality_results['seasonal_forecasts']:
             seasonal_forecasts = seasonality_results['seasonal_forecasts']
             for method, forecast_data in seasonal_forecasts.items():
                 if isinstance(forecast_data, dict) and 'forecast' in forecast_data:
@@ -882,15 +904,22 @@ class EnsembleCoordinatorAgent:
                             predictions=np.array(forecast[:horizon]),
                             metadata={'agent': 'seasonality', 'method': method}
                         ))
-        
-        # If no specific forecasts, create synthetic ones based on analysis
-        if not model_predictions:
-            logger.warning("No explicit forecasts found, creating baseline predictions")
-            # Create simple trend continuation
+        else:
+            # Fallback for SeasonalityDetection
+            logger.warning("SeasonalityDetection agent did not provide forecasts, creating a baseline.")
             model_predictions.append(ModelPrediction(
-                model_name="baseline_trend",
-                predictions=np.linspace(100, 110, horizon),  # Simple linear trend
-                metadata={'agent': 'baseline', 'method': 'linear'}
+                model_name="seasonal_baseline",
+                predictions=np.full(horizon, baseline_value), # Simple constant forecast
+                metadata={'agent': 'seasonality', 'method': 'fallback_constant'}
+            ))
+        
+        # Ensure at least 2 distinct ModelPrediction objects are always returned for ensemble
+        if len(model_predictions) < 2:
+            logger.warning("Less than 2 valid forecasts extracted, adding an additional baseline.")
+            model_predictions.append(ModelPrediction(
+                model_name="additional_baseline",
+                predictions=np.full(horizon, baseline_value * 1.01), # Slightly different baseline
+                metadata={'agent': 'fallback', 'method': 'additional_constant'}
             ))
         
         return model_predictions

@@ -34,16 +34,20 @@ class AnomalyDetectionAgent:
     
     def __init__(self, 
                  agent_config: Optional[Dict[str, Any]] = None,
-                 llm_model: str = settings.ANOMALY_DETECTION_MODEL):
+                 llm_model: str = settings.ANOMALY_DETECTION_MODEL,
+                 timeout: Optional[int] = None,
+                 **kwargs):
         """
         Initialize anomaly detection agent.
         
         Args:
             agent_config: Agent configuration from YAML
             llm_model: Local LLM model for reasoning
+            timeout: Task timeout in seconds
         """
         self.agent_config = agent_config or {}
         self.llm_model = llm_model
+        self.timeout = timeout or 180  # Default 3 minutes
         
         # Initialize models and preprocessor
         self.isolation_forest = IsolationForest(
@@ -137,7 +141,8 @@ class AnomalyDetectionAgent:
             tools=list(self.functions),
             llm=self.llm_model,
             verbose=True,
-            allow_delegation=False,
+            allow_delegation=False, # Keep as False unless specific delegation is intended
+            max_execution_time=self.timeout, # Pass the timeout to the CrewAI Agent
             memory=True
         )
     
@@ -246,8 +251,17 @@ class AnomalyDetectionAgent:
             # If components not provided, perform decomposition
             if seasonal_component is None or trend_component is None:
                 from src.models.statistical import AsyncSTLDecomposition
-                
-                stl_model = AsyncSTLDecomposition()
+
+                # Determine a suitable period for STL decomposition
+                # For weekly data (like the sample), a period of 52 (yearly seasonality) is common.
+                # Ensure series is long enough for at least two periods.
+                stl_period = None
+                if len(series) >= 2 * 52: # Check for weekly yearly period
+                    stl_period = 52
+                elif len(series) >= 2 * 7: # Fallback for daily-like data if weekly is not enough
+                    stl_period = 7 # This might not be relevant for weekly data, but as a general fallback
+
+                stl_model = AsyncSTLDecomposition(period=stl_period) if stl_period else AsyncSTLDecomposition()
                 await stl_model.fit(pd.Series(series))
                 components = stl_model.get_components()
                 

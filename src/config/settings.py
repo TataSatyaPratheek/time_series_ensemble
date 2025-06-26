@@ -1,21 +1,9 @@
-import os, json
+import os, json, urllib.parse
 from dotenv import load_dotenv
-from typing import Optional, List
+from typing import Optional, List, Union
 
 # Load environment variables from .env file
-class Settings:
-    TREND_ANALYSIS_MODEL: str = os.getenv("TREND_ANALYSIS_MODEL", "qwen3:1.7b")
-    SEASONALITY_MODEL: str = os.getenv("SEASONALITY_MODEL", "qwen3:1.7b")
-    ANOMALY_DETECTION_MODEL: str = os.getenv("ANOMALY_DETECTION_MODEL", "llama3.2:latest")
-    ENSEMBLE_COORDINATOR_MODEL: str = os.getenv("ENSEMBLE_COORDINATOR_MODEL", "llama3.2:latest")
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest")
-    
-    TREND_AGENT_TEMPERATURE: float = float(os.getenv("TREND_AGENT_TEMPERATURE", "0.7"))
-    SEASONALITY_AGENT_TEMPERATURE: float = float(os.getenv("SEASONALITY_AGENT_TEMPERATURE", "0.6"))
-    ANOMALY_AGENT_TEMPERATURE: float = float(os.getenv("ANOMALY_AGENT_TEMPERATURE", "0.8"))
-    COORDINATOR_TEMPERATURE: float = float(os.getenv("COORDINATOR_TEMPERATURE", "0.5"))
-    
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text:latest")
+class Settings: # Merged class definition
     # --- Ollama Configuration ---
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_API_KEY: Optional[str] = os.getenv("OLLAMA_API_KEY")

@@ -139,8 +139,8 @@ class AsyncARIMAModel:
             
             # Default fitting parameters
             default_fit_params = {
-                'method': 'lbfgs',
-                'maxiter': 50,
+                'method': 'lbfgs', # Default method
+                # 'maxiter': 50, # Removed as it causes issues in some statsmodels versions
                 'disp': False
             }
             default_fit_params.update(fit_kwargs)
@@ -600,7 +600,7 @@ class AsyncExponentialSmoothing:
                 'aic': float(self.fitted_model.aic),
                 'bic': float(self.fitted_model.bic),
                 'sse': float(self.fitted_model.sse),
-                'params': self.fitted_model.params.to_dict() if hasattr(self.fitted_model, 'params') else {}
+                'params': self.fitted_model.params.to_dict() if isinstance(self.fitted_model.params, pd.Series) else self.fitted_model.params
             }
             
             logger.info(f"Exponential Smoothing fitted successfully in {fit_time:.2f}s")
